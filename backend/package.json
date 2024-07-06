@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@types/react": "^18.3.3",
+    "socket.io": "^4.7.5",
+    "typescript": "^5.5.3"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.4"
+  }
+}
