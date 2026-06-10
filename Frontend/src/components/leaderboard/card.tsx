@@ -1,37 +1,39 @@
-import { FaRegUser } from "react-icons/fa";
+import { motion } from "framer-motion";
 
-type props = {
-    sno: number;
-    name: string;
-    points: number;
-    image?: string;
-};
-
-function Card({ sno, name, points, image }: props) {
-    return (
-        <div className="flex justify-between items-center w-96 bg-white mb-4 rounded-md text-black px-4">
-            <div className="flex gap-4 my-5 w-5/12">
-                <p>{sno}.</p>
-                <h3>{name}</h3>
-            </div>
-            <div>
-                <p>{points}</p>
-            </div>
-            <div>
-                <div className="bg-white p-1 rounded-full">
-                    {image ? (
-                        <img
-                            src={image}
-                            alt={image}
-                            className="w-8 rounded-full"
-                        />
-                    ) : (
-                        <FaRegUser className="text-black text-3xl" />
-                    )}
-                </div>
-            </div>
+export function Card({
+  sno,
+  name,
+  points,
+  highlight,
+}: {
+  sno: number;
+  name: string;
+  points: number;
+  highlight?: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: (sno - 4) * 0.05 }}
+      className={`flex items-center justify-between rounded-2xl px-4 py-3 ${
+        highlight
+          ? "border border-brand-400/50 bg-brand-500/15"
+          : "border border-white/10 bg-white/5"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <span className="w-6 text-center text-sm font-bold text-white/50">{sno}</span>
+        <div className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-sm font-semibold">
+          {name?.[0]?.toUpperCase() ?? "?"}
         </div>
-    );
+        <span className="font-medium">
+          {name} {highlight && <span className="text-xs text-brand-300">(you)</span>}
+        </span>
+      </div>
+      <span className="font-bold tabular-nums">{points}</span>
+    </motion.div>
+  );
 }
 
 export default Card;

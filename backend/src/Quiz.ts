@@ -1,174 +1,181 @@
-
 import { Iomanager } from "./Managers/Iomanager";
 
 export type AllowedSubmissions = 0 | 1 | 2 | 3;
-const PROBLEM_TIME_S = 20;
- 
-interface User {
+export const PROBLEM_TIME_S = 20;
+
+export interface User {
     name: string;
     id: string;
     points: number;
 }
 
-interface Submission {
+export interface Submission {
     problemId: string;
     userId: string;
     isCorrect: boolean;
-    optionSelected: AllowedSubmissions
+    optionSelected: AllowedSubmissions;
 }
 
-interface Problem {
+export interface Option {
+    id: number;
+    title: string;
+}
+
+export interface Problem {
     id: string;
     title: string;
     description: string;
     image?: string;
     startTime: number;
-    answer: AllowedSubmissions; // 0, 1, 2, 3
-    options: {
-        id: number;
-        title: string;
-    }[]
-    submissions: Submission[]
+    answer: AllowedSubmissions;
+    options: Option[];
+    submissions: Submission[];
 }
+
+export type QuizState =
+    | { type: "not_started" }
+    | { type: "question"; problem: PublicProblem }
+    | { type: "leaderboard"; leaderboard: User[] }
+    | { type: "ended"; leaderboard: User[] };
+
+// Problem shape sent to clients — never leaks the correct `answer`.
+export type PublicProblem = Omit<Problem, "answer" | "submissions">;
+
+function toPublicProblem(problem: Problem): PublicProblem {
+    const { answer, submissions, ...rest } = problem;
+    return rest;
+}
+
 export class Quiz {
     public roomId: string;
-    private hasStarted: boolean;
     private problems: Problem[];
     private activeProblem: number;
     private users: User[];
     private currentState: "leaderboard" | "question" | "not_started" | "ended";
-    
+
     constructor(roomId: string) {
         this.roomId = roomId;
-        this.hasStarted = false;
-        this.problems = []
+        this.problems = [];
         this.activeProblem = 0;
         this.users = [];
         this.currentState = "not_started";
-        console.log("room created");
-        setInterval(() => {
-            this.debug();
-        }, 10000)
     }
-    debug() {
-        console.log("----debug---")
-        console.log(this.roomId)
-        console.log(JSON.stringify(this.problems))
-        console.log(this.users)
-        console.log(this.currentState)
-        console.log(this.activeProblem);
-    }
+
     addProblem(problem: Problem) {
         this.problems.push(problem);
-        console.log(this.problems);
     }
+
     start() {
-        this.hasStarted = true;
+        if (this.problems.length === 0) return;
+        this.activeProblem = 0;
         this.setActiveProblem(this.problems[0]);
     }
-    
-    setActiveProblem(problem: Problem) {
-        console.log("set active problem")
-        this.currentState = "question"
+
+    private setActiveProblem(problem: Problem) {
+        this.currentState = "question";
         problem.startTime = new Date().getTime();
         problem.submissions = [];
-        Iomanager.getIo().to(this.roomId).emit("problem", {
-            problem
-        })
-        // Todo: clear this if function moves ahead
-        setTimeout(() => {
-            this.sendLeaderboard(); 
-        }, PROBLEM_TIME_S * 1000);
+        Iomanager.getIo()
+            .to(this.roomId)
+            .emit("problem", { problem: toPublicProblem(problem) });
     }
+
     sendLeaderboard() {
-        console.log("send leaderboard")
-        this.currentState = "leaderboard"
-        const leaderboard = this.getLeaderboard();
-        Iomanager.getIo().to(this.roomId).emit("leaderboard", {
-            leaderboard
-        })
+        this.currentState = "leaderboard";
+        Iomanager.getIo()
+            .to(this.roomId)
+            .emit("leaderboard", { leaderboard: this.getLeaderboard() });
     }
+
     next() {
-        this.activeProblem++;
-        const problem = this.problems[this.activeProblem];
-        if (problem) {
-            this.setActiveProblem(problem);
-        } else {
-            this.activeProblem--;
+        if (this.activeProblem + 1 >= this.problems.length) {
+            this.end();
+            return;
         }
+        this.activeProblem++;
+        this.setActiveProblem(this.problems[this.activeProblem]);
     }
-    genRandonString(length: number) {
-        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()';
-        var charLength = chars.length;
-        var result = '';
-        for ( var i = 0; i < length; i++ ) {
-           result += chars.charAt(Math.floor(Math.random() * charLength));
+
+    end() {
+        this.currentState = "ended";
+        Iomanager.getIo()
+            .to(this.roomId)
+            .emit("ended", { leaderboard: this.getLeaderboard() });
+    }
+
+    private genRandomString(length: number) {
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let result = "";
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         return result;
-     }
+    }
+
     addUser(name: string) {
-        const id = this.genRandonString(7);
-        this.users.push({
-            id,
-            name,
-            points: 0
-        })
+        const id = this.genRandomString(7);
+        this.users.push({ id, name, points: 0 });
         return id;
     }
-    submit(userId: string, roomId: string, problemId: string, submission: AllowedSubmissions) {
-        console.log("userId");
-        console.log(userId);
-        const problem = this.problems.find(x => x.id == problemId);
-        const user = this.users.find(x => x.id === userId);
- 
-        if (!problem || !user) {
-            console.log("problem or user not found")
-            return;
-        }
-        const existingSubmission = problem.submissions.find(x => x.userId === userId);
- 
-        if (existingSubmission) {
-            console.log("existn submissions")
-            return;
-        }
- 
+
+    submit(
+        userId: string,
+        roomId: string,
+        problemId: string,
+        submission: AllowedSubmissions
+    ) {
+        const problem = this.problems.find((x) => x.id === problemId);
+        const user = this.users.find((x) => x.id === userId);
+
+        if (!problem || !user) return;
+
+        const existingSubmission = problem.submissions.find(
+            (x) => x.userId === userId
+        );
+        if (existingSubmission) return;
+
+        const isCorrect = problem.answer === submission;
         problem.submissions.push({
             problemId,
             userId,
-            isCorrect: problem.answer === submission,
-            optionSelected: submission
+            isCorrect,
+            optionSelected: submission,
         });
-        user.points += (1000 - (500 * (new Date().getTime() - problem.startTime) / (PROBLEM_TIME_S * 1000)));
+
+        if (isCorrect) {
+            const elapsed = new Date().getTime() - problem.startTime;
+            const speedBonus = Math.max(
+                0,
+                500 - (500 * elapsed) / (PROBLEM_TIME_S * 1000)
+            );
+            user.points += Math.round(500 + speedBonus);
+        }
     }
 
     getLeaderboard() {
-        return this.users.sort((a, b) => a.points < b.points ? 1 : -1).slice(0, 20);;
+        return [...this.users]
+            .sort((a, b) => b.points - a.points)
+            .slice(0, 20)
+            .map((u) => ({ ...u, points: Math.round(u.points) }));
     }
 
-    getCurrentState() {
+    getProblemCount() {
+        return this.problems.length;
+    }
+
+    getCurrentState(): QuizState {
         if (this.currentState === "not_started") {
-            return {
-                type: "not_started"
-            }
+            return { type: "not_started" };
         }
         if (this.currentState === "ended") {
-            return {
-                type: "ended",
-                leaderboard: this.getLeaderboard()
-            }
+            return { type: "ended", leaderboard: this.getLeaderboard() };
         }
         if (this.currentState === "leaderboard") {
-            return {
-                type: "leaderboard",
-                leaderboard: this.getLeaderboard()
-            }
+            return { type: "leaderboard", leaderboard: this.getLeaderboard() };
         }
-        if (this.currentState === "question") {
-            const problem = this.problems[this.activeProblem];
-            return {
-                type: "question",
-                problem
-            }
-        }
+        return {
+            type: "question",
+            problem: toPublicProblem(this.problems[this.activeProblem]),
+        };
     }
 }

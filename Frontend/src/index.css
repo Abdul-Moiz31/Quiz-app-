@@ -1,17 +1,76 @@
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
+@layer base {
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-ink-900 text-white font-sans antialiased;
+    background-image: radial-gradient(
+        circle at 15% 15%,
+        rgba(124, 58, 237, 0.18),
+        transparent 40%
+      ),
+      radial-gradient(circle at 85% 20%, rgba(236, 72, 153, 0.14), transparent 40%),
+      radial-gradient(circle at 50% 90%, rgba(56, 189, 248, 0.12), transparent 45%);
+    background-attachment: fixed;
+  }
+}
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer components {
+  .glass {
+    @apply border border-white/10 bg-white/5 backdrop-blur-xl;
+  }
+  .input-field {
+    @apply w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base
+      text-white placeholder-white/40 outline-none transition
+      focus:border-brand-400 focus:ring-2 focus:ring-brand-500/40;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r
+      from-violet-500 via-fuchsia-500 to-pink-500 px-6 py-4 text-base font-semibold
+      text-white shadow-glow transition hover:brightness-110
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10
+      bg-white/5 px-6 py-4 text-base font-semibold text-white transition hover:bg-white/10;
+  }
+  .gradient-text {
+    @apply bg-gradient-to-r from-white via-violet-200 to-fuchsia-200 bg-clip-text text-transparent;
+  }
+  .chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70;
+  }
+  .section-eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-brand-400/30 bg-brand-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-brand-300;
+  }
+}
+
+/* Subtle grid overlay for marketing sections */
+.bg-grid {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
 }

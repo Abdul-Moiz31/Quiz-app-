@@ -1,20 +1,24 @@
-import http from 'http';
+import http from "http";
 import { Server } from "socket.io";
-const server = http.createServer();
-
 
 export class Iomanager {
     private static io: Server;
 
-    public static getIo() {
+    public static init(server: http.Server) {
         if (!this.io) {
-            const io = new Server(server, {
+            this.io = new Server(server, {
                 cors: {
-                    origin: "*",
-                    methods: ["GET", "POST"]
-                }
+                    origin: process.env.CORS_ORIGIN || "*",
+                    methods: ["GET", "POST"],
+                },
             });
-            this.io = io;
+        }
+        return this.io;
+    }
+
+    public static getIo() {
+        if (!this.io) {
+            throw new Error("Iomanager not initialized — call init(server) first.");
         }
         return this.io;
     }

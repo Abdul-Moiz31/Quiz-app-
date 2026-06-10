@@ -1,0 +1,16 @@
+# Render.com blueprint — single web service that serves both the API and the UI.
+services:
+  - type: web
+    name: quizpulse
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"
