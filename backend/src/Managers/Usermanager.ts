@@ -1,12 +1,13 @@
 import { Socket } from "socket.io";
 import { QuizManager } from "./Quizmanager";
-const ADMIN_PASSWORD = "ADMIN_PASSWORD";
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "ADMIN_PASSWORD";
 
 export class UserManager {
-    private quizManager;
+    private quizManager: QuizManager;
 
     constructor() {
-        this.quizManager = new QuizManager
+        this.quizManager = new QuizManager();
     }
 
     addUser(socket: Socket) {
@@ -15,47 +16,74 @@ export class UserManager {
 
     private createHandlers(socket: Socket) {
         socket.on("join", (data) => {
-            const userId = this.quizManager.addUser(data.roomId, data.name)
+            const roomId = String(data?.roomId || "").trim();
+            const name = String(data?.name || "").trim();
+            if (!roomId || !name) {
+                socket.emit("error_message", { message: "Room code and name are required." });
+                return;
+            }
+            const userId = this.quizManager.addUser(roomId, name);
+            if (!userId) {
+                socket.emit("error_message", { message: "That room doesn't exist yet." });
+                return;
+            }
+            socket.join(roomId);
             socket.emit("init", {
                 userId,
-                state: this.quizManager.getCurrentState(data.roomId)
+                state: this.quizManager.getCurrentState(roomId),
             });
-            socket.join(data.roomId);
         });
 
         socket.on("joinAdmin", (data) => {
-            if (data.password !== ADMIN_PASSWORD) {
+            if (data?.password !== ADMIN_PASSWORD) {
+                socket.emit("error_message", { message: "Invalid admin password." });
                 return;
             }
-            console.log("join admi called");
-            
-            socket.on("createQuiz", data => {
-                this.quizManager.addQuiz(data.roomId);
-            })
-        
-            socket.on("createProblem", data => {
-                this.quizManager.addProblem(data.roomId, data.problem);
+
+            socket.emit("adminInit", { ok: true });
+
+            socket.on("createQuiz", (d) => {
+                const roomId = String(d?.roomId || "").trim();
+                if (!roomId) return;
+                this.quizManager.addQuiz(roomId);
+                socket.join(roomId);
+                socket.emit("quizCreated", { roomId });
             });
 
-            socket.on("next", data => {
-                this.quizManager.next(data.roomId);
+            socket.on("createProblem", (d) => {
+                this.quizManager.addProblem(d.roomId, d.problem);
+                socket.emit("problemAdded", {
+                    roomId: d.roomId,
+                    count: this.quizManager.getProblemCount(d.roomId),
+                });
+            });
+
+            socket.on("start", (d) => {
+                this.quizManager.start(d.roomId);
+            });
+
+            socket.on("next", (d) => {
+                this.quizManager.next(d.roomId);
+            });
+
+            socket.on("showLeaderboard", (d) => {
+                this.quizManager.showLeaderboard(d.roomId);
+            });
+
+            socket.on("end", (d) => {
+                this.quizManager.end(d.roomId);
             });
         });
 
         socket.on("submit", (data) => {
-            const userId = data.userId;
-            const problemId = data.problemId;
-            const submission = data.submission;
-            const roomId = data.roomId;
-            if (submission != 0 && submission != 1 && submission != 2 && submission != 3 ) {
-                console.error("issue while getting input " + submission )
-                return;
-            }
-            console.log("sub,itting")
-            console.log(roomId);
-            this.quizManager.submit(userId, roomId, problemId, submission)
+            const submission = Number(data?.submission);
+            if (![0, 1, 2, 3].includes(submission)) return;
+            this.quizManager.submit(
+                data.userId,
+                data.roomId,
+                data.problemId,
+                submission as 0 | 1 | 2 | 3
+            );
         });
     }
-
-
 }

@@ -1,20 +1,20 @@
-// import { useState } from 'react'
-import './App.css'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { User } from './components/User';
-import { Admin } from './components/Admin';
+import { Background } from "./components/Background";
+import { Landing } from "./components/Landing";
+import { User } from "./components/User";
+import { Admin } from "./components/Admin";
 
 function App() {
-  // const [count, setCount] = useState(0)
-
   return (
     <BrowserRouter>
+      <Background />
       <Routes>
-          <Route path="admin" element={<Admin />} />
-          <Route path="user" element={<User />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/user" element={<User />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

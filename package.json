@@ -1,5 +1,18 @@
 {
-  "dependencies": {
-    "typescript": "^5.5.3"
+  "name": "quizpulse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QuizPulse — a real-time, Mentimeter-style live quiz app (React + Socket.io).",
+  "scripts": {
+    "install:all": "npm --prefix Frontend install && npm --prefix backend install",
+    "build:frontend": "npm --prefix Frontend run build",
+    "build:backend": "npm --prefix backend run build",
+    "build": "npm run install:all && npm run build:frontend && npm run build:backend",
+    "start": "npm --prefix backend start",
+    "dev:frontend": "npm --prefix Frontend run dev",
+    "dev:backend": "npm --prefix backend run dev"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

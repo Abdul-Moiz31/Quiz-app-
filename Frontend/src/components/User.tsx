@@ -1,129 +1,179 @@
-import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
-// import { CurrentQuestion } from "./CurrentQuestion";
-import { LeaderBoard } from "./leaderboard/Leaderboard";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import type { Socket } from "socket.io-client";
+import { FaArrowLeft, FaBolt } from "react-icons/fa";
+import { createSocket } from "../lib/socket";
+import type { LeaderboardEntry, PublicProblem, QuizState } from "../types";
 import { Quiz } from "./Quiz";
+import { LeaderBoard } from "./leaderboard/Leaderboard";
+import { WaitingScreen } from "./WaitingScreen";
 
-export const User = () => {
-    const [name, setName] = useState("");
-    const [submitted, setSubmitted] = useState(false);
-    const [code, setCode] = useState("");
-    if (!submitted) {
-        return <div>
-            <div className="bg-gray-100 flex items-center justify-center h-screen">
-                <div className="text-center">
-                <div className="mb-8">
-                    <h1 className="text-2xl font-semibold mb-2 text-slate-600">
-                        Enter the code to join
-                    </h1>
-                    <p className="text-gray-600">It’s on the screen in front of you</p>
-                </div>
-                <div className="mb-8">
-                    <input
-                        className="text-center w-64 p-2 border-2 border-purple-600 rounded-lg shadow-sm focus:outline-none focus:border-purple-800"
-                        placeholder="1234 5678"
-                        style={{ fontSize: "1rem" }}
-                        type="text"
-                        onChange={(e) => {
-                            setCode(e.target.value)
-                        }}
-                    />
-                    <br /> <br />
-                    <input
-                        className="text-center w-64 p-2 border-2 border-purple-600 rounded-lg shadow-sm focus:outline-none focus:border-purple-800"
-                        placeholder="Your name"
-                        style={{ fontSize: "1rem" }}
-                        type="text"
-                        onChange={(e) => {
-                            setName(e.target.value)
-                        }}
-                    />
-                </div>
-                <button
-                    className="bg-purple-600 text-white w-64 py-2 rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-800 focus:ring-opacity-50"
-                    style={{ fontSize: "1rem" }}
-                    onClick={() => {
-                        setSubmitted(true);
-                    }}
-                >
-                    Join
-                </button>
-                </div>
-            </div>
+export function User() {
+  const [submitted, setSubmitted] = useState(false);
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
 
-        </div>
-    }
-
-    return <UserLoggedin code={code} name={name} />
+  if (!submitted) {
+    return (
+      <JoinScreen
+        code={code}
+        name={name}
+        setCode={setCode}
+        setName={setName}
+        onJoin={() => setSubmitted(true)}
+      />
+    );
+  }
+  return <UserLoggedIn code={code.trim()} name={name.trim()} />;
 }
 
-export const UserLoggedin = ({name, code}: {name: string, code: string}) => {
-    const [socket, setSocket] = useState<null | any>(null);
-    const roomId = code;
-    const [currentState, setCurrentState] = useState("not_started");
-    const [currentQuestion, setCurrentQuestion] = useState<any>(null);
-    const [leaderboard, setLeaderboard] = useState([]);
-    const [userId, setUserId] = useState("");
+function JoinScreen({
+  code,
+  name,
+  setCode,
+  setName,
+  onJoin,
+}: {
+  code: string;
+  name: string;
+  setCode: (v: string) => void;
+  setName: (v: string) => void;
+  onJoin: () => void;
+}) {
+  const canJoin = code.trim().length > 0 && name.trim().length > 0;
+  return (
+    <main className="flex min-h-full items-center justify-center px-6 py-12">
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 120, damping: 16 }}
+        className="glass w-full max-w-md rounded-3xl p-8 shadow-card"
+      >
+        <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm text-white/50 hover:text-white">
+          <FaArrowLeft /> Home
+        </Link>
+        <h1 className="text-3xl font-bold">Join the quiz</h1>
+        <p className="mt-2 text-white/55">Enter the room code shown on the screen.</p>
 
-    useEffect(() => {
-        const socket = io("https://sum-server.100xdevs.com");
-        setSocket(socket)
-
-        socket.on("connect", () => {
-            console.log(socket.id);
-            socket.emit("join", {
-                roomId,
-                name
-            })
-        });
-        
-        socket.on("init", ({userId, state}) => {
-            setUserId(userId);
-
-            if (state.leaderboard) {
-                setLeaderboard(state.leaderboard)
-            }
-
-            if (state.problem) {
-                setCurrentQuestion(state.problem);
-            }
-
-            setCurrentState(state.type);
-        });
-
-        socket.on("leaderboard", (data) => {
-            setCurrentState("leaderboard");
-            setLeaderboard(data.leaderboard);
-        });
-        socket.on("problem", (data) => {
-            setCurrentState("question");
-            setCurrentQuestion(data.problem);
-        })
-    }, []);
-
-    if (currentState === "not_started") {
-        return <div>
-            This quiz hasnt started yet
+        <div className="mt-8 space-y-4">
+          <input
+            className="input-field text-center tracking-[0.3em]"
+            placeholder="ROOM CODE"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+          />
+          <input
+            className="input-field"
+            placeholder="Your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && canJoin && onJoin()}
+          />
+          <button className="btn-primary w-full" disabled={!canJoin} onClick={onJoin}>
+            <FaBolt /> Join now
+          </button>
         </div>
-    }
-    if (currentState === "question") {
-        return <Quiz roomId={roomId} userId={userId} problemId={currentQuestion.id} quizData={{
-            title: currentQuestion.description,
-            options: currentQuestion.options
-        }} socket={socket} />
-    }    
+      </motion.div>
+    </main>
+  );
+}
 
-    if (currentState === "leaderboard") {
-        return <LeaderBoard leaderboardData={leaderboard.map((x: any) => ({
-            points: x.points,
-            username: x.username,
-            image: x.image
-        }))} />
-    }
+function UserLoggedIn({ name, code }: { name: string; code: string }) {
+  const socketRef = useRef<Socket | null>(null);
+  const [state, setState] = useState<QuizState>({ type: "not_started" });
+  const [userId, setUserId] = useState("");
+  const [error, setError] = useState("");
+  const [connected, setConnected] = useState(false);
 
-    return <div>
-        <br/>
-        Quiz has ended
-        {currentState}
-    </div>
+  useEffect(() => {
+    const socket = createSocket();
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      setConnected(true);
+      setError("");
+      socket.emit("join", { roomId: code, name });
+    });
+    socket.on("disconnect", () => setConnected(false));
+    socket.on("error_message", (d: { message: string }) => setError(d.message));
+
+    socket.on("init", ({ userId, state }: { userId: string; state: QuizState }) => {
+      setUserId(userId);
+      if (state) setState(state);
+    });
+    socket.on("problem", ({ problem }: { problem: PublicProblem }) =>
+      setState({ type: "question", problem })
+    );
+    socket.on("leaderboard", ({ leaderboard }: { leaderboard: LeaderboardEntry[] }) =>
+      setState({ type: "leaderboard", leaderboard })
+    );
+    socket.on("ended", ({ leaderboard }: { leaderboard: LeaderboardEntry[] }) =>
+      setState({ type: "ended", leaderboard })
+    );
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [code, name]);
+
+  if (error) {
+    return (
+      <CenterCard>
+        <h2 className="text-2xl font-bold text-rose-300">Couldn’t join</h2>
+        <p className="mt-2 text-white/60">{error}</p>
+        <Link to="/user" className="btn-ghost mt-6" onClick={() => window.location.reload()}>
+          Try again
+        </Link>
+      </CenterCard>
+    );
+  }
+
+  return (
+    <main className="flex min-h-full items-center justify-center px-6 py-10">
+      <AnimatePresence mode="wait">
+        {!connected && (
+          <WaitingScreen key="connecting" title="Connecting…" subtitle="Hang tight" />
+        )}
+        {connected && state.type === "not_started" && (
+          <WaitingScreen
+            key="waiting"
+            title="You're in!"
+            subtitle={`Welcome, ${name}. Waiting for the host to start…`}
+          />
+        )}
+        {connected && state.type === "question" && (
+          <Quiz
+            key={state.problem.id}
+            problem={state.problem}
+            userId={userId}
+            roomId={code}
+            socket={socketRef.current!}
+          />
+        )}
+        {connected && (state.type === "leaderboard" || state.type === "ended") && (
+          <LeaderBoard
+            key={state.type}
+            leaderboardData={state.leaderboard}
+            ended={state.type === "ended"}
+            youName={name}
+          />
+        )}
+      </AnimatePresence>
+    </main>
+  );
+}
+
+export function CenterCard({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="flex min-h-full items-center justify-center px-6 py-12">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass w-full max-w-md rounded-3xl p-8 text-center shadow-card"
+      >
+        {children}
+      </motion.div>
+    </main>
+  );
 }
